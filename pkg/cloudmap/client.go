@@ -68,7 +68,7 @@ func (sdc *serviceDiscoveryClient) ListServices(ctx context.Context, nsName stri
 	}
 
 	for svcName := range svcIdMap {
-		endpts, endptsErr := sdc.getEndpoints(ctx, nsName, svcName)
+		endpts, endptsErr := sdc.getEndpoints(ctx, nsName, svcName, true)
 		if endptsErr != nil {
 			return svcs, endptsErr
 		}
@@ -125,7 +125,7 @@ func (sdc *serviceDiscoveryClient) GetService(ctx context.Context, nsName string
 		return nil, err
 	}
 
-	endpts, err := sdc.getEndpoints(ctx, nsName, svcName)
+	endpts, err := sdc.getEndpoints(ctx, nsName, svcName, false)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (sdc *serviceDiscoveryClient) DeleteEndpoints(ctx context.Context, nsName s
 	return err
 }
 
-func (sdc *serviceDiscoveryClient) getEndpoints(ctx context.Context, nsName string, svcName string) (endpts []*model.Endpoint, err error) {
+func (sdc *serviceDiscoveryClient) getEndpoints(ctx context.Context, nsName string, svcName string, inThisCluster bool) (endpts []*model.Endpoint, err error) {
 	endpts, found := sdc.cache.GetEndpoints(nsName, svcName)
 	if found {
 		return endpts, nil
@@ -217,6 +217,11 @@ func (sdc *serviceDiscoveryClient) getEndpoints(ctx context.Context, nsName stri
 	queryParameters := map[string]string{
 		model.ClusterSetIdAttr: clusterProperties.ClusterSetId(),
 	}
+
+	if inThisCluster {
+		queryParameters[model.ClusterIdAttr] = clusterProperties.ClusterId()
+	}
+
 	insts, err := sdc.sdApi.DiscoverInstances(ctx, nsName, svcName, queryParameters)
 	if err != nil {
 		return nil, err
